@@ -30,3 +30,13 @@ Start time: __4:00___
 Finish time: _10:00____
 
 Actual time needed to complete: ___6__
+
+Name of feature: __city-explorer-api_________lab08_____________________
+
+Estimate of time needed to complete: ____4 hours_
+
+Start time: __10:00___
+
+Finish time: _11:00____
+
+Actual time needed to complete: ___not complete__
