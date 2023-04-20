@@ -1,138 +1,107 @@
-'use strinct';
+'use strict';
+
+// **** REQUIRE *** (like import but for the backend)
 
 const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
-let data = require('./data/petdata');
-let weatherData = require('./data/weather');
 
+// set variable for weather.json
+const weatherData = require('./data/weather.json');
 
-
-
-
-
-// app is now the server - need to call Express to create the server
+// *** app === server - Need to call Express to create the server
 const app = express();
 
-//allows anyone to hit our server
+// *** MIDDLEWARE *** allow anyone to hit our server
 app.use(cors());
 
-// Selects port for the application from env or selects 3002 if original is not available 
-const PORT = process.env.PORT ||  3002;
+
+// Select port of the app
+const PORT = process.env.PORT || 3002;
 
 
-app.listen(PORT, ()=> console.log(`We are up on ${PORT}`));
+// Verifty port is running
+app.listen(PORT, () => console.log(`Yay we are up on port ${PORT}`));
 
-//  end points 
-//two args 1st arg-endpoint url
-//2nd argument callback which will execute when that endpoint is hit 
-// the call back in the get function takes two parameters : request and response 
-//the send is required if not it will continue to run in circles 
-app.get('/', (request,response)=>{
-    response.status(200).send('Welcome to my server');
+// **** ENDPOINTS ****
+// *** 1st arg - endpoint url as a string
+// *** 2nd arg - callback which will execute when that endpoint is hit
+//              ** 2 parameters, request, response
+
+
+// Welcome to server prompt
+app.get('/', (request, response) => {
+  response.status(200).send('Welcome to my server!');
+});
+console.log('response');
+
+// Get user name from parameter input
+// app.get('/hello', (request, response) => {
+//   let firstName = request.query.firstName;
+//   let lastName = request.query.lastName;
+
+//   console.log(request.query);
+
+//   // prompt welcome message
+//   response.status(200).send(`Hello ${firstName} ${lastName}, welcome to my server`);
+// });
+
+app.get('/weather', (req, res, next) => {
+  console.log('Weather endpoint hit');
+  console.log('All weather data:', weatherData);
+  try {
+    let lat = parseFloat(req.query.lat);
+    let lon = parseFloat(req.query.lon);
+    let searchQuery = req.query.searchQuery;
+
+    console.log('lat:', lat, 'lon:', lon, 'searchQuery:', searchQuery);
+
+    let foundWeather = weatherData.find(city => city.city_name.toLowerCase() === searchQuery.toLowerCase() ||
+      Math.abs(parseFloat(city.lat) - parseFloat(lat)) < 0.01 ||
+      Math.abs(parseFloat(city.lon) - parseFloat(lon)) < 0.01);
+
+
+    console.log('foundWeather:', foundWeather);
+
+
+    // **** Trying to understand why this original code is not working ****
+    // let lat = req.query.lat;
+    // let lon = req.query.lon;
+    // let searchQuery = req.query.searchQuery;
+
+    // let foundWeather = weatherData.find(city => city.city_name.toLowerCase() === searchQuery.toLowerCase() && city.lat == lat && city.lon == lon);
+
+    if (!foundWeather) {
+      return res.status(404).send('No weather found');
+    }
+
+    let forecasts = foundWeather.data.map(weatherData => new Forecast(weatherData));
+
+    res.status(200).send(forecasts);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get('/hello', (request, response)=>{
-    let firstName = request.query.firstName;
-    let lastName = request.query.lastName;
-
-    console.log(request.query);
-
-    response.status(200).send(`Hello ${firstName} ${lastName}, welcome to my server`)
-})
-//Card One location
-app.get('/weather', (request,response,next)=>{
-     try{
-    console.log(weatherData[0].city_name);
-    let locaLat = request.query.lat;
-    let localLon = request.query.lon;
-    let localCity = request.query.city;
-    let returnedCity = weatherData.find(city => city.city_name === localCity);
-    //console.log(returnedCity);
-    
-    let dataToSend = new Weather(returnedCity);
-    dataToSend.generateWeatherData();
-    console.log(dataToSend.myWeatherData);
-
-    // let returnedWeather = weatherData.find(weather => weather.data.description === )
-
-    response.status(200).send(dataToSend.myWeatherData);
-     }catch(error){
-        next(error);
-     }
-    
-
-})
-
-class Weather{
-    constructor(weatherObj){
-        this.cityName = weatherObj.city_name,
-        this.lattitude = weatherObj.lon,
-        this.longitude = weatherObj.lat,
-        this.data = weatherObj.data
-    }
-    myWeatherData =[];
-
-    generateWeatherData(){
-        this.myWeatherData = this.data.reduce((allweather,dayweather)=>{
-            // console.log(dayweather.datetime);
-            // console.log(dayweather.high_temp);
-            // console.log(dayweather.low_temp);
-            allweather.push({'date':dayweather.datetime},{'hightemp': dayweather.high_temp}, {'lowtemp': dayweather.low_temp});
-            return allweather;
-        },[]);
-    }
+// **** CLASS TO CLEAN UP BULKY DATA ****
+class Forecast {
+  constructor(forecastData) {
+    this.date = forecastData.datetime;
+    this.description = forecastData.weather.description;
+    this.minTemp = forecastData.min_temp;
+    this.maxTemp = forecastData.max_temp;
+    this.icon = forecastData.weather.icon;
+  }
 }
 
 
+// *** CATCH ALL ENDPOINT SHOULD BE THE LAST DEFINED ***
+app.get('*', (request, response) => {
+  response.status(404).send('This page does not exist');
+});
 
-
-
-app.get('/pet', (request, response, next)=>{
-    try{
-        //give pet query
-        let queriedSpecies = request.query.species;
-        let foundPet = data.find(pet => pet.species === queriedSpecies)
-
-        let dataToSend = new Pet(foundPet);
-
-        response.status(200).send(dataToSend);
-    }catch(error){
-        next(error)
-    }
-})
-
-// class to goorm bulky data 
-class Pet {
-    constructor(petObj){
-        this.name = petObj.name;
-        this.breed = petObj.breed
-    }
-}
-//TODO: Look at lab start to get started with query 
-
-
-
-
-
-
-
-
-
-
-
-//NOTE:this * will catch all of the bad links that do not exist, this function needs to be at the end of the file
-app.get('*', (request,response)=>{
-    response.status(404).send("This page does not exist");
-})
-
-//This also lives at the bottom of the page handles errors read docs from express
-app.use((error, request,response, next)=>{
-    console.log(error.message);
-    response.status(500).send(error.message);
-})
-
-
-
-
-//to start nodemon in the console 
+// **** ERROR HANDLING - PLUG AND PLAY CODE FROM EXPRESS DOCS ****
+app.use((error, request, response, next) => {
+  console.log(error.message);
+  response.status(500).send(error.message);
+});
